@@ -1,6 +1,6 @@
 [project]
 dependencies = [
-    'blowfish ~= 0.6.1',
+    'pycryptodome ~= 3.17.0',
     'crc ~= 4.2.0',
     'pyooz ~= 0.0.8'
 ]
