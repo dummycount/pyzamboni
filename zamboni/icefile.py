@@ -1,11 +1,8 @@
-"""
-"""
 from dataclasses import dataclass, field
 from enum import IntFlag
 from io import BytesIO
 from typing import BinaryIO, ClassVar
 
-import blowfish
 from .datafile import DataFile
 from .group import GroupHeader, extract_group, split_group
 from .util import read_struct, write_file

@@ -1,11 +1,59 @@
 {
-    "files.exclude": {
-        "**/__pycache__": true
-    },
-    "python.formatting.provider": "black",
-    "[python]": {
-        "editor.formatOnSave": true
-    },
-    "python.linting.pylintEnabled": true,
-    "python.linting.enabled": true
+  "editor.formatOnSave": true,
+  "files.exclude": {
+    "**/__pycache__": true
+  },
+  "python.formatting.provider": "black",
+  "python.linting.pylintEnabled": true,
+  "python.linting.enabled": true,
+  "files.associations": {
+    "cstddef": "cpp",
+    "istream": "cpp",
+    "atomic": "cpp",
+    "bit": "cpp",
+    "cctype": "cpp",
+    "clocale": "cpp",
+    "cmath": "cpp",
+    "compare": "cpp",
+    "concepts": "cpp",
+    "cstdint": "cpp",
+    "cstdio": "cpp",
+    "cstdlib": "cpp",
+    "cstring": "cpp",
+    "ctime": "cpp",
+    "cwchar": "cpp",
+    "exception": "cpp",
+    "initializer_list": "cpp",
+    "ios": "cpp",
+    "iosfwd": "cpp",
+    "iterator": "cpp",
+    "limits": "cpp",
+    "memory": "cpp",
+    "new": "cpp",
+    "ostream": "cpp",
+    "span": "cpp",
+    "stdexcept": "cpp",
+    "streambuf": "cpp",
+    "system_error": "cpp",
+    "tuple": "cpp",
+    "type_traits": "cpp",
+    "typeinfo": "cpp",
+    "utility": "cpp",
+    "vector": "cpp",
+    "xfacet": "cpp",
+    "xiosbase": "cpp",
+    "xlocale": "cpp",
+    "xlocinfo": "cpp",
+    "xlocnum": "cpp",
+    "xmemory": "cpp",
+    "xstddef": "cpp",
+    "xstring": "cpp",
+    "xtr1common": "cpp",
+    "xutility": "cpp",
+    "algorithm": "cpp",
+    "fstream": "cpp",
+    "iostream": "cpp",
+    "optional": "cpp",
+    "random": "cpp"
+  }
 }

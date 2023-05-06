@@ -3,9 +3,11 @@ from io import BytesIO
 from typing import BinaryIO, ClassVar, Optional, Tuple
 import os
 
+import numpy as np
+import ooz
+from . import prs
 from .datafile import DataFile
-from .compression import decompress_kraken, decompress_prs
-from .encrpytion import blowfish_decrypt, floatage_decrypt_block
+from .encrpytion import blowfish_decrypt, floatage_decrypt
 from .util import is_headerless_file, is_nifl, read_struct, write_file
 
 
@@ -61,7 +63,7 @@ def decrypt_group(
     key1, key2 = keys
 
     if not v3_decrypt:
-        data = floatage_decrypt_block(data, key1)
+        data = floatage_decrypt(data, key1)
 
     # The last 12 bytes of the file don't match the C# Zamboni implementation.
     # Is that a bug here or a bug there?
@@ -77,10 +79,10 @@ def decrypt_group(
 
 def decompress_group(data: bytes, out_size: int, kraken_compressed: bool) -> bytes:
     if kraken_compressed:
-        return decompress_kraken(data, out_size)
+        return ooz.decompress(data, out_size)
 
-    data = bytes(b ^ 0x95 for b in data)
-    return decompress_prs(data, out_size)
+    data = np.frombuffer(data, dtype=np.uint8) ^ 0x95
+    return prs.decompress(data, out_size)
 
 
 def split_group(header: GroupHeader, data: bytes) -> list[bytes]:

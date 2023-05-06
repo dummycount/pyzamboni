@@ -1,10 +1,13 @@
 from dataclasses import dataclass
 from struct import unpack_from, pack
-import struct
+
+# import struct
 from typing import Tuple
 
+import numpy as np
 from Crypto.Cipher import Blowfish
 
+from . import floatage
 from .crc import crc32
 from .util import int32_to_uint32
 
@@ -16,16 +19,13 @@ class BlowfishKeys:
     group2_keys: Tuple[bytes, bytes]
 
 
-# TODO: does python-blowfish have a function for this?
-def floatage_decrypt_block(data: bytes, key: bytes, shift=16):
+def floatage_decrypt(data: bytes, key: bytes):
     key_uint = unpack_from("<I", key)[0]
-    xor_byte = ((key_uint >> shift) ^ key_uint) & 0xFF
-
-    return bytes(b ^ xor_byte if b and b != xor_byte else b for b in data)
+    return floatage.decrypt(data, key_uint)
 
 
 def _endian_swap(data: bytes):
-    return b"".join(struct.pack(">I", x[0]) for x in struct.iter_unpack("<I", data))
+    return np.frombuffer(data, dtype=np.uint32).byteswap().tobytes()
 
 
 def blowfish_decrypt(data: bytes, key: bytes):
@@ -77,12 +77,12 @@ def _get_key(keys: bytes, temp_key: int):
     def get_byte(idx: int, shift1: int, shift2: int, shift3: int):
         return (((keys[idx] << shift1) | (keys[idx] >> shift2)) & 0xFF) << shift3
 
-    b1 = get_byte(num2, 7, 1, 24)
-    b2 = get_byte(num4, 6, 2, 16)
-    b3 = get_byte(num1, 5, 3, 8)
-    b4 = get_byte(num3, 5, 3, 0)
+    byte1 = get_byte(num2, 7, 1, 24)
+    byte2 = get_byte(num4, 6, 2, 16)
+    byte3 = get_byte(num1, 5, 3, 8)
+    byte4 = get_byte(num3, 5, 3, 0)
 
-    return b1 | b2 | b3 | b4
+    return byte1 | byte2 | byte3 | byte4
 
 
 def _calc_blowfish_keys(keys: bytes, temp_key: int):
