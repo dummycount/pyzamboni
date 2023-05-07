@@ -13,6 +13,9 @@ dependencies = [
 ]
 dynamic = ["version", "readme"]
 
+[project.scripts]
+zamboni = "zamboni.cli:main"
+
 [build-system]
 requires = ["setuptools", "setuptools-scm"]
 build-backend = "setuptools.build_meta"

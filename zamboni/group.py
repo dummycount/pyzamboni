@@ -8,7 +8,7 @@ import ooz
 from . import prs
 from .datafile import DataFile
 from .encrpytion import blowfish_decrypt, floatage_decrypt
-from .util import is_headerless_file, is_nifl, read_struct, write_file
+from .util import is_headerless_file, is_nifl, read_struct
 
 
 @dataclass
@@ -72,8 +72,6 @@ def decrypt_group(
     if not v3_decrypt and len(data) < second_pass_threshold:
         data = blowfish_decrypt(data, key2)
 
-    write_file(".testdata/test_decrypt_output.bin", data)
-
     return data
 
 
@@ -108,7 +106,7 @@ def _split_headerless_nifl(header: GroupHeader, data: bytes):
         if stream.read(4) != b"NIFL":
             # Nameless file for remaining file data
             stream.seek(start, os.SEEK_SET)
-            files.append(DataFile(data=stream.read(), file_index=i))
+            files.append(DataFile(raw_data=stream.read(), file_index=i))
             break
 
         size = read_struct("16xi", stream)[0]
@@ -123,7 +121,7 @@ def _split_headerless_nifl(header: GroupHeader, data: bytes):
         size += nof0_size + 0x10
 
         stream.seek(start, os.SEEK_SET)
-        files.append(DataFile(data=stream.read(size), file_index=i))
+        files.append(DataFile(raw_data=stream.read(size), file_index=i))
 
     return files
 
@@ -145,6 +143,6 @@ def _split_normal_group(header: GroupHeader, data: bytes):
         size = read_struct("4xi", stream)[0]
 
         stream.seek(start, os.SEEK_SET)
-        files.append(DataFile(data=stream.read(size), file_index=i))
+        files.append(DataFile(raw_data=stream.read(size), file_index=i))
 
     return files

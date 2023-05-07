@@ -1,11 +1,12 @@
 from dataclasses import dataclass, field
 from enum import IntFlag
 from io import BytesIO
+from pathlib import Path
 from typing import BinaryIO, ClassVar
 
 from .datafile import DataFile
 from .group import GroupHeader, extract_group, split_group
-from .util import read_struct, write_file
+from .util import read_struct
 from .encrpytion import blowfish_decrypt, get_blowfish_keys
 
 
@@ -16,9 +17,10 @@ class IceFlags(IntFlag):
 
 @dataclass
 class IceArchiveHeader:
-    FORMAT: ClassVar[str] = "<I4xIIIIII"
+    SIGNATURE: ClassVar[bytes] = b"ICE\0"
+    FORMAT: ClassVar[str] = "<4s4xIIIIII"
 
-    signature: int = 0x00454349  # "ICE\0"
+    signature: bytes = SIGNATURE
     # 4 byte padding
     version: int = 4
     magic_80: int = 0x80
@@ -28,8 +30,13 @@ class IceArchiveHeader:
     file_size: int = 0
 
     @staticmethod
-    def read(stream: BinaryIO) -> "GroupHeader":
-        return IceArchiveHeader(*read_struct(IceArchiveHeader.FORMAT, stream))
+    def read(stream: BinaryIO) -> "IceArchiveHeader":
+        header = IceArchiveHeader(*read_struct(IceArchiveHeader.FORMAT, stream))
+
+        if header.signature != IceArchiveHeader.SIGNATURE:
+            raise ValueError("Not an ICE archive.")
+
+        return header
 
 
 @dataclass
@@ -41,7 +48,11 @@ class IceFile:
     group2_files: list[DataFile] = field(default_factory=list)
 
     @staticmethod
-    def read(stream: BinaryIO) -> "IceFile":
+    def read(stream: BinaryIO | Path | str) -> "IceFile":
+        if isinstance(stream, (Path, str)):
+            with open(stream, "rb") as file:
+                return IceFile.read(file)
+
         header = IceArchiveHeader.read(stream)
 
         match header.version:
@@ -60,7 +71,7 @@ class IceFileV3(IceFile):
     def read_after_header(header: IceArchiveHeader, stream: BinaryIO) -> "IceFileV3":
         assert header.version == 3
 
-        raise NotImplementedError()
+        return IceFileV3(header=header)
 
 
 class IceFileV4(IceFile):
@@ -80,8 +91,6 @@ class IceFileV4(IceFile):
             group_header_data = blowfish_decrypt(
                 group_header_data, keys.group_headers_key
             )
-
-        write_file(".testdata/test_decrypt_header.bin", group_header_data)
 
         group_header_stream = BytesIO(group_header_data)
         group1_header = GroupHeader.read(group_header_stream)
