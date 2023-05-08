@@ -4,7 +4,7 @@ from typing import BinaryIO, ClassVar, Optional, Tuple
 import os
 
 import numpy as np
-import ooz
+from . import ooz
 from . import prs
 from .datafile import DataFile
 from .encrpytion import blowfish_decrypt, floatage_decrypt
@@ -77,7 +77,7 @@ def decrypt_group(
 
 def decompress_group(data: bytes, out_size: int, kraken_compressed: bool) -> bytes:
     if kraken_compressed:
-        return ooz.decompress(data, out_size)
+        return ooz.kraken_decompress(data, out_size)
 
     data = np.frombuffer(data, dtype=np.uint8) ^ 0x95
     return prs.decompress(data, out_size)

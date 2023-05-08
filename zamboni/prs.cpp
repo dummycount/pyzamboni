@@ -8,7 +8,10 @@
 
 namespace {
 
-PyObject* PrsCompress(PyObject* self, PyObject* args) { return nullptr; }
+PyObject* PrsCompress(PyObject* self, PyObject* args) {
+  PyErr_SetString(PyExc_NotImplementedError, "");
+  return nullptr;
+}
 
 class DecompressState {
  public:
@@ -111,25 +114,25 @@ PyObject* PrsDecompress(PyObject* self, PyObject* args) {
 
     return Py_BuildValue("y#", result.data(), result.size());
   } catch (const std::out_of_range& ex) {
-    PyErr_SetString(PyExc_IndexError, ex.what());
+    PyErr_SetString(PyExc_ValueError, ex.what());
   }
 
   return nullptr;
 }
 
-PyMethodDef PrsMethods[] = {
+PyMethodDef Methods[] = {
     {"compress", PrsCompress, METH_VARARGS, nullptr},
     {"decompress", PrsDecompress, METH_VARARGS, nullptr},
     {},  // Sentinel
 };
 
-PyModuleDef FloatageModule = {
+PyModuleDef Module = {
     .m_base = PyModuleDef_HEAD_INIT,
     .m_name = "prs",
     .m_size = -1,
-    .m_methods = PrsMethods,
+    .m_methods = Methods,
 };
 
 }  // namespace
 
-PyMODINIT_FUNC PyInit_prs() { return PyModule_Create(&FloatageModule); }
+PyMODINIT_FUNC PyInit_prs() { return PyModule_Create(&Module); }

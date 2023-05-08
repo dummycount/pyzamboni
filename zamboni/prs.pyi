@@ -13,5 +13,5 @@ def decompress(data: bytes, out_size: int) -> bytes:
 
     :param data: Data to decompress
     :param out_size: Expected size of the output data
-    :raises IndexError:
+    :raises ValueError:
     """

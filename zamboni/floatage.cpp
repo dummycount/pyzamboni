@@ -38,17 +38,17 @@ PyObject* FloatageDecrypt(PyObject* self, PyObject* args) {
   return Py_BuildValue("y#", result.data(), result.size());
 }
 
-PyMethodDef FloatageMethods[] = {
+PyMethodDef Methods[] = {
     {"decrypt", FloatageDecrypt, METH_VARARGS, nullptr}, {},  // Sentinel
 };
 
-PyModuleDef FloatageModule = {
+PyModuleDef Module = {
     .m_base = PyModuleDef_HEAD_INIT,
     .m_name = "floatage",
     .m_size = -1,
-    .m_methods = FloatageMethods,
+    .m_methods = Methods,
 };
 
 }  // namespace
 
-PyMODINIT_FUNC PyInit_floatage() { return PyModule_Create(&FloatageModule); }
+PyMODINIT_FUNC PyInit_floatage() { return PyModule_Create(&Module); }
