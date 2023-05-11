@@ -34,7 +34,11 @@ setup(
         ),
         Extension(
             name="zamboni.prs",
-            sources=["zamboni/prs.cpp"],
+            sources=[
+                "zamboni/prs.cpp",
+                "zamboni/prs_comp.cpp",
+                "zamboni/prs_decomp.cpp",
+            ],
             extra_compile_args=EXTRA_COMPILE_ARGS,
         ),
     ]

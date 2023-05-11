@@ -1,6 +1,7 @@
+#define PY_SSIZE_T_CLEAN
+
 #include "../ooz/ooz.h"
 
-#define PY_SSIZE_T_CLEAN
 #include <Python.h>
 #include <stdint.h>
 
