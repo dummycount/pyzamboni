@@ -5,6 +5,9 @@
 
 #include "prs.hpp"
 
+namespace Zamboni {
+namespace Prs {
+
 namespace {
 
 class DecompressState {
@@ -95,3 +98,6 @@ std::vector<std::byte> Decompress(std::span<const std::byte> inputBuffer, std::p
 
   return output;
 }
+
+}  // namespace Prs
+}  // namespace Zamboni

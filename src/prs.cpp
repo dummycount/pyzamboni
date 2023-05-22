@@ -19,7 +19,7 @@ PyObject* PrsCompress(PyObject* self, PyObject* args) {
   }
 
   try {
-    const auto result = Compress({data, static_cast<std::size_t>(dataSize)});
+    const auto result = Zamboni::Prs::Compress({data, static_cast<std::size_t>(dataSize)});
 
     return Py_BuildValue("y#", result.data(), result.size());
   } catch (const std::out_of_range& ex) {
@@ -38,7 +38,7 @@ PyObject* PrsDecompress(PyObject* self, PyObject* args) {
   }
 
   try {
-    const auto result = Decompress({data, static_cast<std::size_t>(dataSize)}, outSize);
+    const auto result = Zamboni::Prs::Decompress({data, static_cast<std::size_t>(dataSize)}, outSize);
 
     return Py_BuildValue("y#", result.data(), result.size());
   } catch (const std::out_of_range& ex) {

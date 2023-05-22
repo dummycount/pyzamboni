@@ -1,6 +1,7 @@
 #include <algorithm>
 #include <cstddef>
 #include <cstdint>
+#include <format>
 #include <iterator>
 #include <span>
 #include <stdexcept>
@@ -9,6 +10,9 @@
 #include <vector>
 
 #include "prs.hpp"
+
+namespace Zamboni {
+namespace Prs {
 
 namespace {
 
@@ -70,10 +74,11 @@ class CompressState {
 
   void WriteShortReference(int size, std::ptrdiff_t offset) {
     if (size > MaxShortRefSize) {
-      throw std::out_of_range{"Short reference size must be <= 5"};
+      throw std::out_of_range{std::format("Short reference size is {} but expected <= {}", size, MaxShortRefSize)};
     }
     if (offset >= ShortRefOffsetLimit) {
-      throw std::out_of_range{"Short reference offset must be < 256"};
+      throw std::out_of_range{
+          std::format("Short reference offset is {} but expected < {}", offset, ShortRefOffsetLimit)};
     }
 
     AddControlBit(0);
@@ -84,11 +89,11 @@ class CompressState {
   }
 
   void WriteLongReference(int size, std::ptrdiff_t offset) {
-    if (size >= MaxLongRefSize) {
-      throw std::out_of_range{"Long reference size must be <= 6"};
+    if (size > MaxLongRefSize) {
+      throw std::out_of_range{std::format("Long reference size is {} but expected <= {}", size, MaxShortRefSize)};
     }
-    if (offset >= ShortRefOffsetLimit) {
-      throw std::out_of_range{"Long reference offset must be < 8192"};
+    if (offset >= LongRefOffsetLimit) {
+      throw std::out_of_range{std::format("Long reference offset is {} but expected < {}", offset, LongRefOffsetLimit)};
     }
 
     AddControlBit(0);
@@ -99,9 +104,8 @@ class CompressState {
       value |= size - 2;
     }
 
-    // TODO: is this little or big endian?
-    mOut = static_cast<std::byte>(value >> 8);
     mOut = static_cast<std::byte>(value & 0xFF);
+    mOut = static_cast<std::byte>(value >> 8);
 
     if (size > 9) {
       mOut = static_cast<std::byte>(size - 10);
@@ -116,8 +120,9 @@ class CompressState {
       mOut = std::byte{bit};
     } else {
       mBuffer.at(mControlByteOffset) |= static_cast<std::byte>(bit << mControlBitCounter);
-      mControlBitCounter++;
     }
+
+    mControlBitCounter++;
   }
 
   std::vector<std::byte>& mBuffer;
@@ -143,11 +148,13 @@ std::vector<std::byte> Compress(std::span<const std::byte> inputBuffer) {
   const auto end = inputBuffer.end();
   const auto length = std::ssize(inputBuffer);
 
-  output.WriteStart(*input++, *input++);
+  const auto d0 = *input++;
+  const auto d1 = *input++;
+  output.WriteStart(d0, d1);
 
   while (input != end) {
     const auto currentOffset = input - inputBuffer.begin();
-    const auto offsetList = GetOffsetList(dictionary, *input, currentOffset);
+    const auto& offsetList = GetOffsetList(dictionary, *input, currentOffset);
 
     auto refSize = 2;
     std::ptrdiff_t refOffset = -1;
@@ -158,7 +165,7 @@ std::vector<std::byte> Compress(std::span<const std::byte> inputBuffer) {
       auto testSize = 0;
       const auto maxSize = std::min(length - currentOffset, ShortRefOffsetLimit);
 
-      while (testSize < maxSize && input[testOffset + testSize] == input[currentOffset + testSize]) {
+      while (testSize < maxSize && inputBuffer[testOffset + testSize] == inputBuffer[currentOffset + testSize]) {
         testSize++;
       }
 
@@ -185,3 +192,6 @@ std::vector<std::byte> Compress(std::span<const std::byte> inputBuffer) {
   output.WriteEnd();
   return outputBuffer;
 }
+
+}  // namespace Prs
+}  // namespace Zamboni

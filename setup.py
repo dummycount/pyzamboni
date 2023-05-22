@@ -9,8 +9,13 @@ else:
 setup(
     ext_modules=[
         Extension(
+            name="zamboni.crc",
+            sources=["src/crc.cpp"],
+            extra_compile_args=EXTRA_COMPILE_ARGS,
+        ),
+        Extension(
             name="zamboni.floatage",
-            sources=["zamboni/floatage.cpp"],
+            sources=["src/floatage.cpp"],
             extra_compile_args=EXTRA_COMPILE_ARGS,
         ),
         Extension(
@@ -28,16 +33,16 @@ setup(
                 "ooz/kraken.cpp",
                 "ooz/lzna.cpp",
                 "ooz/stdafx.cpp",
-                "zamboni/ooz.cpp",
+                "src/ooz.cpp",
             ],
             extra_compile_args=EXTRA_COMPILE_ARGS,
         ),
         Extension(
             name="zamboni.prs",
             sources=[
-                "zamboni/prs.cpp",
-                "zamboni/prs_comp.cpp",
-                "zamboni/prs_decomp.cpp",
+                "src/prs.cpp",
+                "src/prs_comp.cpp",
+                "src/prs_decomp.cpp",
             ],
             extra_compile_args=EXTRA_COMPILE_ARGS,
         ),
