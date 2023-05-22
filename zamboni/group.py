@@ -1,13 +1,17 @@
 from dataclasses import dataclass
 from io import BytesIO
-from typing import BinaryIO, ClassVar, Optional, Tuple
+import struct
+from typing import BinaryIO, ClassVar, Iterable, Optional, Tuple
 import os
 
 import numpy as np
+
+from .compression import CompressOptions
+from .crc import crc32
 from . import ooz
 from . import prs
 from .datafile import DataFile
-from .encrpytion import blowfish_decrypt, floatage_decrypt
+from .encrpytion import blowfish_decrypt, blowfish_encrypt, floatage_decrypt
 from .util import is_headerless_file, is_nifl, read_struct
 
 
@@ -28,11 +32,31 @@ class GroupHeader:
     def stored_size(self):
         return self.compressed_size if self.compressed_size else self.original_size
 
+    def write(self, stream: BinaryIO):
+        stream.write(
+            struct.pack(
+                GroupHeader.FORMAT,
+                self.original_size,
+                self.compressed_size,
+                self.file_count,
+                self.crc32,
+            )
+        )
+
+
+def get_group_header(data: bytes, file_count: int, original_size: int):
+    return GroupHeader(
+        original_size=original_size,
+        compressed_size=len(data),
+        file_count=file_count,
+        crc32=crc32(data),
+    )
+
 
 def extract_group(
     header: GroupHeader,
     stream: BinaryIO,
-    kraken_compressed=False,
+    compression: CompressOptions,
     encrypted=False,
     keys: Optional[Tuple[bytes, bytes]] = None,
     second_pass_threshold=0,
@@ -52,7 +76,7 @@ def extract_group(
         )
 
     if header.compressed_size:
-        data = decompress_group(data, header.original_size, kraken_compressed)
+        data = decompress_group(data, header.original_size, options=compression)
 
     return data
 
@@ -69,18 +93,61 @@ def decrypt_group(
     # Is that a bug here or a bug there?
     data = blowfish_decrypt(data, key1)
 
-    if not v3_decrypt and len(data) < second_pass_threshold:
+    if not v3_decrypt and len(data) <= second_pass_threshold:
         data = blowfish_decrypt(data, key2)
 
     return data
 
 
-def decompress_group(data: bytes, out_size: int, kraken_compressed: bool) -> bytes:
-    if kraken_compressed:
-        return ooz.kraken_decompress(data, out_size)
+def encrypt_group(
+    data: bytes, keys: Tuple[bytes, bytes], second_pass_threshold=0
+) -> bytes:
+    key1, key2 = keys
 
-    data = np.frombuffer(data, dtype=np.uint8) ^ 0x95
-    return prs.decompress(data, out_size)
+    if len(data) <= second_pass_threshold:
+        data = blowfish_encrypt(data, key2)
+
+    data = blowfish_encrypt(data, key1)
+    return floatage_decrypt(data, key1)
+
+
+def compress_group(
+    data: bytes, options: CompressOptions = CompressOptions("kraken")
+) -> bytes:
+    if not data:
+        return data
+
+    match options.mode:
+        case "none":
+            return data
+
+        case "kraken":
+            return ooz.kraken_compress(data, level=options.level)
+
+        case "prs":
+            data = prs.compress(data)
+            return (np.frombuffer(data, dtype=np.uint8) ^ 0x95).tobytes()
+
+        case _:
+            raise NotImplementedError()
+
+
+def decompress_group(
+    data: bytes, out_size: int, options: CompressOptions = CompressOptions("kraken")
+) -> bytes:
+    match options.mode:
+        case "none":
+            return data
+
+        case "kraken":
+            return ooz.kraken_decompress(data, out_size)
+
+        case "prs":
+            data = np.frombuffer(data, dtype=np.uint8) ^ 0x95
+            return prs.decompress(data, out_size)
+
+        case _:
+            raise NotImplementedError()
 
 
 def split_group(header: GroupHeader, data: bytes) -> list[bytes]:
@@ -106,7 +173,7 @@ def _split_headerless_nifl(header: GroupHeader, data: bytes):
         if stream.read(4) != b"NIFL":
             # Nameless file for remaining file data
             stream.seek(start, os.SEEK_SET)
-            files.append(DataFile(raw_data=stream.read(), file_index=i))
+            files.append(DataFile.from_stream(stream, file_index=i))
             break
 
         size = read_struct("16xi", stream)[0]
@@ -121,7 +188,7 @@ def _split_headerless_nifl(header: GroupHeader, data: bytes):
         size += nof0_size + 0x10
 
         stream.seek(start, os.SEEK_SET)
-        files.append(DataFile(raw_data=stream.read(size), file_index=i))
+        files.append(DataFile.from_bytes(stream.read(size), file_index=i))
 
     return files
 
@@ -139,10 +206,15 @@ def _split_normal_group(header: GroupHeader, data: bytes):
     stream = BytesIO(data)
 
     for i in range(header.file_count):
-        start = stream.tell()
-        size = read_struct("4xi", stream)[0]
-
-        stream.seek(start, os.SEEK_SET)
-        files.append(DataFile(raw_data=stream.read(size), file_index=i))
+        files.append(DataFile.from_stream(stream, file_index=i))
 
     return files
+
+
+def combine_group(files: Iterable[DataFile]):
+    data = BytesIO()
+
+    for file in files:
+        file.write(data, include_header=True)
+
+    return data.getvalue()

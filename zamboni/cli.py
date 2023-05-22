@@ -2,8 +2,10 @@ import argparse
 from pathlib import Path
 from typing import Iterable
 
+from .compression import CompressOptions
 from .datafile import DataFile
 from .icefile import IceFile
+from .pack import pack
 from .unpack import unpack
 from .util import naturalsize
 
@@ -29,6 +31,27 @@ def main():
         "--groups", "-g", action="store_true", help="use group subdirectories"
     )
 
+    pack_parser = subparsers.add_parser("pack", help="pack files into an ICE archive")
+    pack_parser.add_argument(
+        "files", type=Path, nargs="+", help="files or directories to pack"
+    )
+    pack_parser.add_argument(
+        "--out", "-o", type=Path, help="output file", required=True
+    )
+    pack_parser.add_argument(
+        "--compress",
+        "-c",
+        type=CompressOptions.parse,
+        nargs="?",
+        help="compression level (0-9 or 'prs')",
+    )
+    pack_parser.add_argument(
+        "--encrypt", "-e", action="store_true", help="encrypt the archive"
+    )
+    pack_parser.add_argument(
+        "--version", "-v", type=int, default=4, help="format version (3-5)"
+    )
+
     unpack_parser = subparsers.add_parser(
         "unpack", help="extract files from an ICE archive"
     )
@@ -36,6 +59,9 @@ def main():
     unpack_parser.add_argument("--out", "-o", type=Path, help="output directory")
     unpack_parser.add_argument(
         "--groups", "-g", action="store_true", help="use group subdirectories"
+    )
+    unpack_parser.add_argument(
+        "--raw", "-r", action="store_true", help="Do not strip ICE file headers"
     )
 
     args = parser.parse_args()
@@ -48,11 +74,48 @@ def main():
             print_file_list(ice_path=args.icefile, use_groups=args.groups)
 
         case "pack":
-            pass
+            pack_file(
+                files=args.files,
+                out_path=args.out,
+                file_type=args.version,
+                group1_files=[],
+                compression=args.compress,
+                encrypt=args.encrypt,
+            )
 
         case "unpack":
-            for path in unpack(ice=args.icefile, out_dir=args.out, use_groups=args.groups):
-                print(path)
+            unpack_file(
+                ice_path=args.icefile,
+                out_dir=args.out,
+                use_groups=args.groups,
+                dump_raw_data=args.raw,
+            )
+
+
+def unpack_file(ice_path: Path, out_dir: Path, use_groups: bool, dump_raw_data: bool):
+    for path in unpack(
+        ice_path, out_dir=out_dir, use_groups=use_groups, dump_raw_data=dump_raw_data
+    ):
+        print(path)
+
+
+def pack_file(
+    files: list[Path],
+    out_path: Path,
+    file_type: int,
+    group1_files: list[str],
+    compression: CompressOptions,
+    encrypt: bool,
+):
+    with out_path.open("wb") as f:
+        pack(
+            f,
+            files,
+            file_type=file_type,
+            group1_files=group1_files,
+            compression=compression,
+            encrypt=encrypt,
+        )
 
 
 def print_info(ice_path: Path, humanize=False):
@@ -81,7 +144,7 @@ def print_group_info(header: str, files: Iterable[DataFile], humanize=False):
     print()
     print(header)
     for file in files:
-        print(f"  {file.name.ljust(column_width)}  {formatsize(len(file.raw_data))}")
+        print(f"  {file.name.ljust(column_width)}  {formatsize(len(file.data))}")
 
 
 def print_file_list(ice_path: Path, use_groups=False):

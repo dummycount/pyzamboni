@@ -4,7 +4,7 @@ Oodle compression
 
 # pylint: disable=unused-argument
 
-def kraken_compress(data: bytes, level=4) -> bytes:
+def kraken_compress(data: bytes, level=3) -> bytes:
     """
     Compress data to Kraken format
 

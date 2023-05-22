@@ -1,7 +1,9 @@
 import ctypes
 from pathlib import Path
 import struct
-from typing import BinaryIO
+from typing import BinaryIO, TypeVar
+
+_T = TypeVar("_T")
 
 
 def read_struct(fmt: str, stream: BinaryIO):
@@ -21,6 +23,15 @@ def is_headerless_file(data: bytes):
 
 def int32_to_uint32(value: int):
     return ctypes.c_uint32(value).value
+
+
+def pad_to_multiple(x: int, multiple: int):
+    remainder = x % multiple
+    return x if remainder == 0 else x + multiple - remainder
+
+
+def set_flag(bitmask: _T, flag: _T, value: bool):
+    return (bitmask & ~flag) | (flag if value else 0)
 
 
 def write_file(path: Path, data: bytes):

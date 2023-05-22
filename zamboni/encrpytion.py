@@ -43,6 +43,10 @@ def blowfish_decrypt(data: bytes, key: bytes):
     return decrypted + remainder
 
 
+def blowfish_encrypt(data: bytes, key: bytes) -> bytes:
+    raise NotImplementedError()
+
+
 def get_blowfish_keys(magic_numbers: bytes, file_size: int) -> BlowfishKeys:
     int_6c = unpack_from("i", magic_numbers, 0x6C)[0]
     crc = crc32(magic_numbers[0x7C:0xDC])

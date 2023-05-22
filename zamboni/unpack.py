@@ -6,7 +6,9 @@ from .icefile import IceFile
 
 
 @overload
-def unpack(ice: IceFile, out_dir: Path, use_groups=False) -> Generator[Path, Any, None]:
+def unpack(
+    ice: IceFile, out_dir: Path, use_groups=False, dump_raw_data=False
+) -> Generator[Path, Any, None]:
     """
     Unpack an ICE archive
 
@@ -18,7 +20,10 @@ def unpack(ice: IceFile, out_dir: Path, use_groups=False) -> Generator[Path, Any
 
 @overload
 def unpack(
-    ice: Path | str, out_dir: Optional[Path] = None, use_groups=False
+    ice: Path | str,
+    out_dir: Optional[Path] = None,
+    use_groups=False,
+    dump_raw_data=False,
 ) -> Generator[Path, Any, None]:
     """
     Unpack an ICE archive
@@ -29,7 +34,12 @@ def unpack(
     """
 
 
-def unpack(ice: IceFile | Path | str, out_dir: Optional[Path] = None, use_groups=False):
+def unpack(
+    ice: IceFile | Path | str,
+    out_dir: Optional[Path] = None,
+    use_groups=False,
+    dump_raw_data=False,
+):
     if isinstance(ice, (Path, str)):
         ice_path = ice
         ice = IceFile.read(ice_path)
@@ -50,15 +60,19 @@ def unpack(ice: IceFile | Path | str, out_dir: Optional[Path] = None, use_groups
     unpacked: list[Path] = []
 
     if ice.group1_files:
-        unpacked += unpack_group(ice.group1_files, group1_dir)
+        unpacked += unpack_group(
+            ice.group1_files, group1_dir, dump_raw_data=dump_raw_data
+        )
 
     if ice.group2_files:
-        unpacked += unpack_group(ice.group2_files, group2_dir)
+        unpacked += unpack_group(
+            ice.group2_files, group2_dir, dump_raw_data=dump_raw_data
+        )
 
     return unpacked
 
 
-def unpack_group(files: Iterable[DataFile], out_dir: Path):
+def unpack_group(files: Iterable[DataFile], out_dir: Path, dump_raw_data=False):
     out_dir.mkdir(parents=True, exist_ok=True)
 
     unpacked: list[Path] = []
@@ -66,7 +80,7 @@ def unpack_group(files: Iterable[DataFile], out_dir: Path):
     for data_file in files:
         path = out_dir / data_file.name
         with path.open(mode="wb") as out_file:
-            out_file.write(data_file.data())
+            data_file.write(out_file, include_header=dump_raw_data)
 
         unpacked.append(path)
 
