@@ -40,6 +40,7 @@ def unpack(
     use_groups=False,
     dump_raw_data=False,
 ):
+    """Unpack an ICE archive"""
     if isinstance(ice, (Path, str)):
         ice_path = ice
         ice = IceFile.read(ice_path)
@@ -73,6 +74,7 @@ def unpack(
 
 
 def unpack_group(files: Iterable[DataFile], out_dir: Path, dump_raw_data=False):
+    """Write a file group to files"""
     out_dir.mkdir(parents=True, exist_ok=True)
 
     unpacked: list[Path] = []

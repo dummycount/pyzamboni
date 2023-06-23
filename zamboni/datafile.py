@@ -1,3 +1,6 @@
+"""
+ICE archive data files
+"""
 from dataclasses import dataclass
 from io import BytesIO
 import os
@@ -9,6 +12,8 @@ from .util import is_headerless_file, pad_to_multiple, read_struct
 
 @dataclass
 class DataFileHeader:
+    """Header for an ICE archive data file"""
+
     FORMAT: ClassVar[str] = "<4sIIIII40x"
 
     extension: bytes  # 4 bytes, no period
@@ -23,6 +28,7 @@ class DataFileHeader:
 
     @staticmethod
     def read(stream: BinaryIO) -> "DataFileHeader":
+        """Read a header from a stream"""
         start = stream.tell()
         header = DataFileHeader(*read_struct(DataFileHeader.FORMAT, stream))
 
@@ -34,6 +40,7 @@ class DataFileHeader:
 
     @staticmethod
     def for_file(filename: str, size: int):
+        """Generate the header for given file information"""
         extension = Path(filename).suffix.removeprefix(".").encode().ljust(4, b"\0")
         filename_bytes = filename.encode() + b"\0"
 
@@ -56,6 +63,7 @@ class DataFileHeader:
         return self.file_size - self.header_size - self.data_size
 
     def write(self, stream: BinaryIO):
+        """Write the header to a stream"""
         filename_space = self.header_size - struct.calcsize(DataFileHeader.FORMAT)
 
         assert len(self.filename_bytes) <= filename_space
@@ -79,12 +87,15 @@ class DataFileHeader:
 
 @dataclass
 class DataFile:
+    """ICE archive data file"""
+
     name: str
     data: bytes
     header: Optional[DataFileHeader] = None
 
     @staticmethod
     def from_stream(stream: BinaryIO, file_index=0):
+        """Read a file from a stream"""
         start = stream.tell()
         ext = stream.read(4)
         stream.seek(start, os.SEEK_SET)
@@ -105,12 +116,15 @@ class DataFile:
 
     @staticmethod
     def from_bytes(data: bytes, file_index=0):
+        """Read a file from a buffer"""
         return DataFile.from_stream(BytesIO(data), file_index=file_index)
 
     def update_header(self):
+        """Update the file header to match the current file info"""
         self.header = DataFileHeader.for_file(self.name, len(self.data))
 
     def write(self, stream: BinaryIO, include_header=False):
+        """Write the ICE-formatted file to a stream"""
         if include_header:
             self.update_header()
             self.header.write(stream)

@@ -1,3 +1,7 @@
+"""
+Data file groups
+"""
+
 from dataclasses import dataclass
 from io import BytesIO
 import struct
@@ -17,6 +21,8 @@ from .util import is_headerless_file, is_nifl, read_struct
 
 @dataclass
 class GroupHeader:
+    """Header for a group of data files in an ICE archive"""
+
     FORMAT: ClassVar[str] = "<IIII"
 
     original_size: int = 0
@@ -26,13 +32,16 @@ class GroupHeader:
 
     @staticmethod
     def read(stream: BinaryIO) -> "GroupHeader":
+        """Read a header from a stream"""
         return GroupHeader(*read_struct(GroupHeader.FORMAT, stream))
 
     @property
     def stored_size(self):
+        """Size of the data as stored in the ICE archive"""
         return self.compressed_size if self.compressed_size else self.original_size
 
     def write(self, stream: BinaryIO):
+        """Write the header to a stream"""
         stream.write(
             struct.pack(
                 GroupHeader.FORMAT,
@@ -45,6 +54,7 @@ class GroupHeader:
 
 
 def get_group_header(data: bytes, file_count: int, original_size: int):
+    """Create a group header for the given data"""
     return GroupHeader(
         original_size=original_size,
         compressed_size=len(data) if len(data) != original_size else 0,
@@ -62,6 +72,7 @@ def extract_group(
     second_pass_threshold=0,
     v3_decrypt=False,
 ) -> bytes:
+    """Read a file group from a stream, decrypting and decompressing as necessary"""
     if header.stored_size == 0:
         return bytes()
 
@@ -84,6 +95,7 @@ def extract_group(
 def decrypt_group(
     data: bytes, keys: Tuple[bytes, bytes], second_pass_threshold=0, v3_decrypt=False
 ) -> bytes:
+    """Decrypt a file group"""
     key1, key2 = keys
 
     if not v3_decrypt:
@@ -102,6 +114,7 @@ def decrypt_group(
 def encrypt_group(
     data: bytes, keys: Tuple[bytes, bytes], second_pass_threshold=0
 ) -> bytes:
+    """Encrypt a file group"""
     key1, key2 = keys
 
     if len(data) <= second_pass_threshold:
@@ -114,6 +127,7 @@ def encrypt_group(
 def compress_group(
     data: bytes, options: CompressOptions = CompressOptions("kraken")
 ) -> bytes:
+    """Compress a file group"""
     if not data:
         return data
 
@@ -135,6 +149,7 @@ def compress_group(
 def decompress_group(
     data: bytes, out_size: int, options: CompressOptions = CompressOptions("kraken")
 ) -> bytes:
+    """Decompress a file group"""
     match options.mode:
         case "none":
             return data
@@ -151,6 +166,7 @@ def decompress_group(
 
 
 def split_group(header: GroupHeader, data: bytes) -> list[bytes]:
+    """Split a file group into individual files"""
     if not data:
         return []
 
@@ -212,6 +228,7 @@ def _split_normal_group(header: GroupHeader, data: bytes):
 
 
 def combine_group(files: Iterable[DataFile]):
+    """Combine data files into a file group"""
     data = BytesIO()
 
     for file in files:

@@ -1,3 +1,6 @@
+"""
+Compression options
+"""
 from dataclasses import dataclass
 from typing import Literal, Optional
 
@@ -7,11 +10,14 @@ DEFAULT_COMPRESS_LEVEL = 3
 
 @dataclass
 class CompressOptions:
+    """Selects the type of compression to use"""
+
     mode: Literal["none", "kraken", "prs"] = "none"
     level: int = DEFAULT_COMPRESS_LEVEL
 
     @staticmethod
     def parse(value: Optional[str]):
+        """Parse a string as compression options"""
         if not value:
             return CompressOptions()
 

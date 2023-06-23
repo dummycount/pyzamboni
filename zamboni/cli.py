@@ -1,3 +1,6 @@
+"""
+Command line interface
+"""
 import argparse
 from pathlib import Path
 from typing import Iterable
@@ -11,6 +14,7 @@ from .util import naturalsize
 
 
 def main():
+    """Main entry point"""
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers(dest="command", required=True)
 
@@ -49,7 +53,7 @@ def main():
         "--encrypt", "-e", action="store_true", help="encrypt the archive"
     )
     pack_parser.add_argument(
-        "--version", "-v", type=int, default=4, help="format version (3-5)"
+        "--version", "-v", type=int, default=4, help="format version (3 or 4)"
     )
     pack_parser.add_argument(
         "--group1", "-1", nargs="*", help="regular expression(s) matching group 1 files"
@@ -96,6 +100,7 @@ def main():
 
 
 def unpack_file(ice_path: Path, out_dir: Path, use_groups: bool, dump_raw_data: bool):
+    """Extract an ICE archive and print the files extracted"""
     for path in unpack(
         ice_path, out_dir=out_dir, use_groups=use_groups, dump_raw_data=dump_raw_data
     ):
@@ -110,6 +115,7 @@ def pack_file(
     compression: CompressOptions,
     encrypt: bool,
 ):
+    """Pack files into an ICE archive"""
     with out_path.open("wb") as f:
         pack(
             f,
@@ -122,6 +128,8 @@ def pack_file(
 
 
 def print_info(ice_path: Path, humanize=False):
+    """Print ICE file metadata and file list"""
+
     def formatsize(num):
         return naturalsize(num) if humanize else num
 
@@ -139,6 +147,8 @@ def print_info(ice_path: Path, humanize=False):
 
 
 def print_group_info(header: str, files: Iterable[DataFile], humanize=False):
+    """Print files in a file group"""
+
     def formatsize(num):
         return naturalsize(num) if humanize else num
 
@@ -151,6 +161,8 @@ def print_group_info(header: str, files: Iterable[DataFile], humanize=False):
 
 
 def print_file_list(ice_path: Path, use_groups=False):
+    """Print files contained in an ICE archive"""
+
     group1_prefix = "group1/" if use_groups else ""
     group2_prefix = "group2/" if use_groups else ""
 

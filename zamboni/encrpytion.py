@@ -1,3 +1,7 @@
+"""
+Encryption/decryption utilities
+"""
+
 from dataclasses import dataclass
 from struct import unpack_from, pack
 from typing import Tuple
@@ -12,12 +16,15 @@ from .util import int32_to_uint32
 
 @dataclass
 class BlowfishKeys:
+    """Blowfish cipher keys"""
+
     group_headers_key: bytes
     group1_keys: Tuple[bytes, bytes]
     group2_keys: Tuple[bytes, bytes]
 
 
 def floatage_decrypt(data: bytes, key: bytes):
+    """Some sort of preprocessing done before blowfish encryption?"""
     key_uint = unpack_from("<I", key)[0]
     return floatage.decrypt(data, key_uint)
 
@@ -27,6 +34,7 @@ def _endian_swap(data: bytes):
 
 
 def blowfish_decrypt(data: bytes, key: bytes):
+    """Decrypt data using blowfish cipher"""
     dlen = len(data)
     split = dlen - (dlen % Blowfish.block_size)
     blocks, remainder = data[0:split], data[split:]
@@ -42,10 +50,12 @@ def blowfish_decrypt(data: bytes, key: bytes):
 
 
 def blowfish_encrypt(data: bytes, key: bytes) -> bytes:
+    """Encrypt data using blowfish cipher"""
     raise NotImplementedError()
 
 
 def get_blowfish_keys(magic_numbers: bytes, file_size: int) -> BlowfishKeys:
+    """Get blowfish cipher keys from magic numbers in the ICE file header"""
     int_6c = unpack_from("i", magic_numbers, 0x6C)[0]
     crc = crc32(magic_numbers[0x7C:0xDC])
 

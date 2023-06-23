@@ -1,6 +1,10 @@
-from .cli import main
+"""
+Module entry point
+"""
+
 import cProfile
 import pstats
+from .cli import main
 
 
 if __name__ == "__main__":

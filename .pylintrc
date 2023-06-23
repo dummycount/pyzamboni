@@ -3,3 +3,6 @@
 # be loaded. Extensions are loading into the active Python interpreter and may
 # run arbitrary code.
 extension-pkg-allow-list=zamboni.crc,zamboni.floatage,zamboni.ooz,zamboni.prs
+
+[FORMAT]
+good-names=f
