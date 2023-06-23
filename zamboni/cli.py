@@ -51,6 +51,9 @@ def main():
     pack_parser.add_argument(
         "--version", "-v", type=int, default=4, help="format version (3-5)"
     )
+    pack_parser.add_argument(
+        "--group1", "-1", nargs="*", help="regular expression(s) matching group 1 files"
+    )
 
     unpack_parser = subparsers.add_parser(
         "unpack", help="extract files from an ICE archive"
@@ -78,8 +81,8 @@ def main():
                 files=args.files,
                 out_path=args.out,
                 file_type=args.version,
-                group1_files=[],
-                compression=args.compress,
+                group1_files=args.group1,
+                compression=CompressOptions.parse(args.compress),
                 encrypt=args.encrypt,
             )
 

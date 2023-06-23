@@ -18,7 +18,7 @@ def pack(
     compression=CompressOptions(),
     encrypt=False,
 ):
-    group1, group2 = group_files(paths, group1_files)
+    group1, group2 = group_files(paths, group1_files=group1_files)
 
     if not group1 and not group2:
         raise ValueError("No files to pack")

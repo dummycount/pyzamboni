@@ -47,7 +47,7 @@ class GroupHeader:
 def get_group_header(data: bytes, file_count: int, original_size: int):
     return GroupHeader(
         original_size=original_size,
-        compressed_size=len(data),
+        compressed_size=len(data) if len(data) != original_size else 0,
         file_count=file_count,
         crc32=crc32(data),
     )

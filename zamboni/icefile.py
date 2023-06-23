@@ -201,8 +201,8 @@ class IceFileV3(IceFile):
         group2_files = split_group(group2_header, group2_data)
 
         return IceFileV3(
-            signature=header,
-            header=meta,
+            header=header,
+            meta=meta,
             group1_header=group1_header,
             group2_header=group2_header,
             group1_files=group1_files,
@@ -287,8 +287,8 @@ class IceFileV4(IceFile):
         group2_files = split_group(group2_header, group2_data)
 
         return IceFileV4(
-            signature=header,
-            header=meta,
+            header=header,
+            meta=meta,
             group1_header=group1_header,
             group2_header=group2_header,
             group1_files=group1_files,
