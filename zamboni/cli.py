@@ -125,8 +125,8 @@ def print_info(ice_path: Path, humanize=False):
     ice = IceFile.read(ice_path)
 
     print(f"Version: {ice.header.version}")
-    print(f"Flags:   0x{ice.header.flags:04x}")
-    print(f"Size:    {formatsize(ice.header.file_size)}")
+    print(f"Flags:   0x{ice.meta.flags:04x}")
+    print(f"Size:    {formatsize(ice.meta.file_size)}")
 
     if ice.group1_files:
         print_group_info("Group 1:", ice.group1_files, humanize)

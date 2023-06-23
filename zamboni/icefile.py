@@ -1,9 +1,10 @@
 from dataclasses import dataclass, field
 from enum import IntFlag
 from io import BytesIO
+import os
 from pathlib import Path
 import struct
-from typing import BinaryIO, ClassVar
+from typing import BinaryIO, ClassVar, Optional, Tuple
 
 from .compression import CompressOptions
 from .crc import crc32
@@ -26,37 +27,53 @@ class IceFlags(IntFlag):
     KRAKEN_COMPRESSED = 0x08
 
 
-# TODO: v3 doesn't use this header format
 @dataclass
-class IceArchiveHeader:
+class IceFileHeader:
     SIGNATURE: ClassVar[bytes] = b"ICE\0"
-    FORMAT: ClassVar[str] = "<4s4xIIIIII"
+    FORMAT: ClassVar[str] = "<4s4xII"
 
     signature: bytes = SIGNATURE  # 4 bytes
     # 4 byte padding
     version: int = 4
     magic_80: int = 0x80
+
+    @staticmethod
+    def read(stream: BinaryIO) -> "IceFileHeader":
+        sig = IceFileHeader(*read_struct(IceFileHeader.FORMAT, stream))
+
+        if sig.signature != IceFileHeader.SIGNATURE:
+            raise ValueError("Not an ICE archive")
+
+        return sig
+
+    def write(self, stream: BinaryIO):
+        stream.write(
+            struct.pack(
+                IceFileHeader.FORMAT,
+                self.signature,
+                self.version,
+                self.magic_80,
+            )
+        )
+
+
+@dataclass
+class IceFileMetadata:
+    FORMAT: ClassVar[str] = "<IIII"
+
     magic_ff: int = 0xFF
     crc32: int = 0
     flags: IceFlags = IceFlags.NONE
     file_size: int = 0
 
     @staticmethod
-    def read(stream: BinaryIO) -> "IceArchiveHeader":
-        header = IceArchiveHeader(*read_struct(IceArchiveHeader.FORMAT, stream))
-
-        if header.signature != IceArchiveHeader.SIGNATURE:
-            raise ValueError("Not an ICE archive.")
-
-        return header
+    def read(stream: BinaryIO) -> "IceFileMetadata":
+        return IceFileMetadata(*read_struct(IceFileMetadata.FORMAT, stream))
 
     def write(self, stream: BinaryIO):
         stream.write(
             struct.pack(
-                IceArchiveHeader.FORMAT,
-                self.signature,
-                self.version,
-                self.magic_80,
+                IceFileMetadata.FORMAT,
                 self.magic_ff,
                 self.crc32,
                 self.flags,
@@ -83,7 +100,8 @@ class IceArchiveHeader:
 
 @dataclass
 class IceFile:
-    header: IceArchiveHeader = field(default_factory=IceArchiveHeader)
+    header: IceFileHeader = field(default_factory=IceFileHeader)
+    meta: IceFileMetadata = field(default_factory=IceFileMetadata)
     group1_header: GroupHeader = None
     group2_header: GroupHeader = None
     group1_files: list[DataFile] = field(default_factory=list)
@@ -95,17 +113,17 @@ class IceFile:
             with open(stream, "rb") as file:
                 return IceFile.read(file)
 
-        header = IceArchiveHeader.read(stream)
+        signature = IceFileHeader.read(stream)
 
-        match header.version:
+        match signature.version:
             case 3:
-                return IceFileV3.read_after_header(header, stream)
+                return IceFileV3.read_after_header(signature, stream)
             case 4:
-                return IceFileV4.read_after_header(header, stream)
+                return IceFileV4.read_after_header(signature, stream)
             case 5:
-                return IceFileV5.read_after_header(header, stream)
+                return IceFileV5.read_after_header(signature, stream)
 
-        raise ValueError(f"Invalid version {header.version}")
+        raise ValueError(f"Invalid version {signature.version}")
 
     def write(
         self,
@@ -117,6 +135,7 @@ class IceFile:
             with open(stream, "wb") as file:
                 self.write(file, compression=compression, encrypt=encrypt)
 
+        self.header.write(stream)
         self._write(stream, compression=compression, encrypt=encrypt)
 
     def _write(self, stream: BinaryIO, compression: CompressOptions, encrypt: bool):
@@ -124,14 +143,97 @@ class IceFile:
 
 
 class IceFileV3(IceFile):
+    SECOND_PASS_THRESHOLD: ClassVar[int] = 0x19000
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.header.version = 3
+
+    @dataclass
+    class GroupInfo:
+        FORMAT: ClassVar[str] = "<II4xI"
+
+        group1_size: int
+        group2_size: int
+        key: int
+
+        @staticmethod
+        def read(stream: BinaryIO):
+            return IceFileV3.GroupInfo(*read_struct(IceFileV3.GroupInfo.FORMAT, stream))
+
     @staticmethod
-    def read_after_header(header: IceArchiveHeader, stream: BinaryIO) -> "IceFileV3":
+    def read_after_header(header: IceFileHeader, stream: BinaryIO) -> "IceFileV3":
         assert header.version == 3
 
-        return IceFileV3(header=header)
+        group1_header = GroupHeader.read(stream)
+        group2_header = GroupHeader.read(stream)
+
+        group_info = IceFileV3.GroupInfo.read(stream)
+        meta = IceFileMetadata.read(stream)
+
+        # Skip padding
+        stream.seek(0x30, os.SEEK_CUR)
+
+        keys = IceFileV3._get_keys(group1_header, group2_header, group_info, meta)
+        compression = CompressOptions("kraken" if meta.kraken_compressed else "prs")
+
+        group1_data = extract_group(
+            group1_header,
+            stream,
+            compression=compression,
+            encrypted=meta.encrypted,
+            keys=keys,
+            second_pass_threshold=IceFileV3.SECOND_PASS_THRESHOLD,
+            v3_decrypt=True,
+        )
+
+        group2_data = extract_group(
+            group2_header,
+            stream,
+            compression=compression,
+            encrypted=meta.encrypted,
+            keys=keys,
+            second_pass_threshold=IceFileV3.SECOND_PASS_THRESHOLD,
+            v3_decrypt=True,
+        )
+
+        group1_files = split_group(group1_header, group1_data)
+        group2_files = split_group(group2_header, group2_data)
+
+        return IceFileV3(
+            signature=header,
+            header=meta,
+            group1_header=group1_header,
+            group2_header=group2_header,
+            group1_files=group1_files,
+            group2_files=group2_files,
+        )
+
+    @staticmethod
+    def _get_keys(
+        group1_header: GroupHeader,
+        group2_header: GroupHeader,
+        groups: GroupInfo,
+        meta: IceFileMetadata,
+    ) -> Optional[Tuple[bytes, bytes]]:
+        if groups.group1_size:
+            return (struct.pack("<I", groups.group1_size), b"")
+
+        if meta.encrypted:
+            key = (
+                group1_header.original_size
+                ^ group2_header.original_size
+                ^ groups.group2_size
+                ^ groups.key
+                ^ 0xC8D7469A
+            )
+
+            return (struct.pack("<I", key), b"")
+
+        return None
 
     def _write(self, stream: BinaryIO, compression: CompressOptions, encrypt: bool):
-        pass
+        raise NotImplementedError()
 
 
 class IceFileV4(IceFile):
@@ -144,14 +246,15 @@ class IceFileV4(IceFile):
         self.header.version = 4
 
     @staticmethod
-    def read_after_header(header: IceArchiveHeader, stream: BinaryIO) -> "IceFileV4":
+    def read_after_header(header: IceFileHeader, stream: BinaryIO) -> "IceFileV4":
         assert header.version == 4
 
-        keys = get_blowfish_keys(stream.read(0x100), header.file_size)
+        meta = IceFileMetadata.read(stream)
+        keys = get_blowfish_keys(stream.read(0x100), meta.file_size)
 
         group_header_data = stream.read(0x30)
 
-        if header.encrypted:
+        if meta.encrypted:
             group_header_data = blowfish_decrypt(
                 group_header_data, keys.group_headers_key
             )
@@ -160,11 +263,13 @@ class IceFileV4(IceFile):
         group1_header = GroupHeader.read(group_header_stream)
         group2_header = GroupHeader.read(group_header_stream)
 
+        compression = CompressOptions("kraken" if meta.kraken_compressed else "prs")
+
         group1_data = extract_group(
             group1_header,
             stream,
-            compression="kraken" if header.kraken_compressed else "prs",
-            encrypted=header.encrypted,
+            compression=compression,
+            encrypted=meta.encrypted,
             keys=keys.group1_keys,
             second_pass_threshold=IceFileV4.SECOND_PASS_THRESHOLD,
         )
@@ -172,8 +277,8 @@ class IceFileV4(IceFile):
         group2_data = extract_group(
             group2_header,
             stream,
-            compression="kraken" if header.kraken_compressed else "prs",
-            encrypted=header.encrypted,
+            compression=compression,
+            encrypted=meta.encrypted,
             keys=keys.group2_keys,
             second_pass_threshold=IceFileV4.SECOND_PASS_THRESHOLD,
         )
@@ -182,7 +287,8 @@ class IceFileV4(IceFile):
         group2_files = split_group(group2_header, group2_data)
 
         return IceFileV4(
-            header=header,
+            signature=header,
+            header=meta,
             group1_header=group1_header,
             group2_header=group2_header,
             group1_files=group1_files,
@@ -190,8 +296,8 @@ class IceFileV4(IceFile):
         )
 
     def _write(self, stream: BinaryIO, compression: CompressOptions, encrypt: bool):
-        self.header.encrypted = encrypt
-        self.header.kraken_compressed = compression.mode == "kraken"
+        self.meta.encrypted = encrypt
+        self.meta.kraken_compressed = compression.mode == "kraken"
 
         group1_data = combine_group(self.group1_files)
         group2_data = combine_group(self.group2_files)
@@ -212,13 +318,13 @@ class IceFileV4(IceFile):
             original_size=group2_original_size,
         )
 
-        self.header.file_size = (
+        self.meta.file_size = (
             IceFileV4.HEADER_SIZE + len(group1_data) + len(group2_data)
         )
-        self.header.crc32 = crc32(group1_data, group2_data)
-        self.header.write(stream)
+        self.meta.crc32 = crc32(group1_data, group2_data)
+        self.meta.write(stream)
 
-        if self.header.encrypted:
+        if self.meta.encrypted:
             # TODO: write encryption keys
             raise NotImplementedError()
         else:
@@ -236,10 +342,9 @@ class IceFileV4(IceFile):
 
 class IceFileV5(IceFile):
     @staticmethod
-    def read_after_header(header: IceArchiveHeader, stream: BinaryIO) -> "IceFileV5":
-        assert 5 <= header.version <= 9
-
-        return IceFileV5(header=header)
+    def read_after_header(header: IceFileHeader, stream: BinaryIO) -> "IceFileV5":
+        assert header.version == 5
+        raise NotImplementedError()
 
     def _write(self, stream: BinaryIO, compression: CompressOptions, encrypt: bool):
-        pass
+        raise NotImplementedError()

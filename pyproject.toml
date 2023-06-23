@@ -5,7 +5,7 @@ description = "Library for working with PSO2 ICE files"
 requires-python = ">= 3.10"
 license = { text = "MIT" }
 
-dependencies = ['pycryptodome ~= 3.17.0', 'numpy ~= 1.24.2']
+dependencies = ['pycryptodome ~= 3.18.0', 'numpy ~= 1.23.5']
 dynamic = ["version", "readme"]
 
 [project.scripts]

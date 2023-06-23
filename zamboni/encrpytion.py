@@ -1,7 +1,5 @@
 from dataclasses import dataclass
 from struct import unpack_from, pack
-
-# import struct
 from typing import Tuple
 
 import numpy as np
