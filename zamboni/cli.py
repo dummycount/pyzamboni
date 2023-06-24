@@ -46,8 +46,9 @@ def main():
         "--compress",
         "-c",
         type=CompressOptions.parse,
+        default="kraken",
         nargs="?",
-        help="compression level (0-9 or 'prs')",
+        help="compression level ('none', 0-9, or 'prs', default: 3)",
     )
     pack_parser.add_argument(
         "--encrypt", "-e", action="store_true", help="encrypt the archive"
@@ -86,7 +87,7 @@ def main():
                 out_path=args.out,
                 file_type=args.version,
                 group1_files=args.group1,
-                compression=CompressOptions.parse(args.compress),
+                compression=args.compress,
                 encrypt=args.encrypt,
             )
 

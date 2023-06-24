@@ -16,16 +16,20 @@ class CompressOptions:
     level: int = DEFAULT_COMPRESS_LEVEL
 
     @staticmethod
-    def parse(value: Optional[str]):
+    def parse(value: Optional[str | int]):
         """Parse a string as compression options"""
-        if not value:
-            return CompressOptions()
 
         match value:
-            case "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9":
+            case CompressOptions():
+                return value
+
+            case "no" | "none" | None:
+                return CompressOptions()
+
+            case "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" | int():
                 return CompressOptions("kraken", int(value))
 
-            case "kraken":
+            case "kraken" | "yes":
                 return CompressOptions("kraken")
 
             case "prs":
@@ -33,7 +37,7 @@ class CompressOptions:
 
             case _:
                 raise TypeError(
-                    'Compression mode must be 0-9, "kraken", "prs", or None'
+                    f'Compression mode must be 0-9, "kraken", "prs", or "none". Got "{value}"'
                 )
 
     def __bool__(self):
