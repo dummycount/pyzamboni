@@ -7,13 +7,13 @@ Python library for working with PSO2 ICE files, based on [https://github.com/Sha
 This project uses C++ extensions, so a [C++ compiler](https://wiki.python.org/moin/WindowsCompilers) is required.
 
 ```sh
-git submodule update --init --recursive
-pip install .
+pip install git+https://github.com/dummycount/pyzamboni
 ```
 
-To install in editable mode, so changes you make to the library apply immediately, use this command to install instead:
+For development, clone this repository and run:
 
 ```sh
+git submodule update --init --recursive
 pip install . -e
 ```
 
