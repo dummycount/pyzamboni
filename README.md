@@ -14,7 +14,7 @@ For development, clone this repository and run:
 
 ```sh
 git submodule update --init --recursive
-pip install . -e
+pip install -e .
 ```
 
 ## Usage (CLI)
