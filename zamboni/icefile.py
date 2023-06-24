@@ -361,6 +361,6 @@ class IceFileV4(IceFile):
 
         # TODO: in an actual file, this is either 0 or almost but not quite the
         # original size. What are these values?
-        stream.write(struct.pack("<II8x", group1_original_size, group2_original_size))
+        stream.write(b"\0" * 0x10)
         stream.write(group1_data)
         stream.write(group2_data)
