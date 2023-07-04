@@ -1,8 +1,7 @@
 #define PY_SSIZE_T_CLEAN
 
-#include "../ooz/ooz.h"
-
 #include <Python.h>
+#include <ooz.h>
 #include <stdint.h>
 
 #include <vector>

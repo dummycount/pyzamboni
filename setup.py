@@ -1,10 +1,16 @@
 from setuptools import Extension, setup
+import os
+import shlex
 import sys
 
 if sys.platform == "win32":
     EXTRA_COMPILE_ARGS = ["/std:c++20", "/O2"]
 else:
     EXTRA_COMPILE_ARGS = ["-std=c++20", "-O2", "-Wall", "-Wextra", "-Werror"]
+
+# CFLAGS/LDFLAGS are ignored when building extensions, so add those manually.
+cflags = shlex.split(os.getenv("CFLAGS", ""))
+ldflags = shlex.split(os.getenv("LDFLAGS", ""))
 
 setup(
     ext_modules=[
@@ -35,6 +41,7 @@ setup(
                 "ooz/stdafx.cpp",
                 "src/ooz.cpp",
             ],
+            include_dirs=["ooz"],
             extra_compile_args=EXTRA_COMPILE_ARGS,
         ),
         Extension(
