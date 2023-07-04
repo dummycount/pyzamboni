@@ -17,12 +17,14 @@ setup(
         Extension(
             name="zamboni.crc",
             sources=["src/crc.cpp"],
-            extra_compile_args=EXTRA_COMPILE_ARGS,
+            extra_compile_args=[EXTRA_COMPILE_ARGS, *cflags],
+            extra_link_args=ldflags,
         ),
         Extension(
             name="zamboni.floatage",
             sources=["src/floatage.cpp"],
-            extra_compile_args=EXTRA_COMPILE_ARGS,
+            extra_compile_args=[EXTRA_COMPILE_ARGS, *cflags],
+            extra_link_args=ldflags,
         ),
         Extension(
             name="zamboni.ooz",
@@ -42,7 +44,8 @@ setup(
                 "src/ooz.cpp",
             ],
             include_dirs=["ooz"],
-            extra_compile_args=EXTRA_COMPILE_ARGS,
+            extra_compile_args=[EXTRA_COMPILE_ARGS, *cflags],
+            extra_link_args=ldflags,
         ),
         Extension(
             name="zamboni.prs",
@@ -51,7 +54,8 @@ setup(
                 "src/prs_comp.cpp",
                 "src/prs_decomp.cpp",
             ],
-            extra_compile_args=EXTRA_COMPILE_ARGS,
+            extra_compile_args=[EXTRA_COMPILE_ARGS, *cflags],
+            extra_link_args=ldflags,
         ),
     ]
 )
