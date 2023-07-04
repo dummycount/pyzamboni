@@ -5,4 +5,4 @@
 extension-pkg-allow-list=zamboni.crc,zamboni.floatage,zamboni.ooz,zamboni.prs
 
 [FORMAT]
-good-names=f
+good-names=f,i

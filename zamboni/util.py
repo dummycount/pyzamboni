@@ -10,9 +10,9 @@ from typing import BinaryIO, TypeVar
 _T = TypeVar("_T")
 
 
-def read_struct(fmt: str, stream: BinaryIO):
+def read_struct(fmt: struct.Struct, stream: BinaryIO):
     """Read data from a stream and struct.unpack() it"""
-    return struct.unpack(fmt, stream.read(struct.calcsize(fmt)))
+    return fmt.unpack(stream.read(fmt.size))
 
 
 def is_nifl(data: bytes):

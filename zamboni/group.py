@@ -23,7 +23,7 @@ from .util import is_headerless_file, is_nifl, read_struct
 class GroupHeader:
     """Header for a group of data files in an ICE archive"""
 
-    FORMAT: ClassVar[str] = "<IIII"
+    FORMAT: ClassVar[struct.Struct] = struct.Struct("<IIII")
 
     original_size: int = 0
     compressed_size: int = 0
@@ -43,8 +43,7 @@ class GroupHeader:
     def write(self, stream: BinaryIO):
         """Write the header to a stream"""
         stream.write(
-            struct.pack(
-                GroupHeader.FORMAT,
+            GroupHeader.FORMAT.pack(
                 self.original_size,
                 self.compressed_size,
                 self.file_count,
@@ -124,9 +123,7 @@ def encrypt_group(
     return floatage_decrypt(data, key1)
 
 
-def compress_group(
-    data: bytes, options: CompressOptions = CompressOptions("kraken")
-) -> bytes:
+def compress_group(data: bytes, options: CompressOptions = CompressOptions()) -> bytes:
     """Compress a file group"""
     if not data:
         return data
@@ -147,7 +144,7 @@ def compress_group(
 
 
 def decompress_group(
-    data: bytes, out_size: int, options: CompressOptions = CompressOptions("kraken")
+    data: bytes, out_size: int, options: CompressOptions = CompressOptions()
 ) -> bytes:
     """Decompress a file group"""
     match options.mode:
@@ -179,6 +176,9 @@ def split_group(header: GroupHeader, data: bytes) -> list[bytes]:
     return _split_normal_group(header, data)
 
 
+_INT32 = struct.Struct("i")
+
+
 def _split_headerless_nifl(header: GroupHeader, data: bytes):
     files: list[DataFile] = []
     stream = BytesIO(data)
@@ -192,10 +192,11 @@ def _split_headerless_nifl(header: GroupHeader, data: bytes):
             files.append(DataFile.from_stream(stream, file_index=i))
             break
 
-        size = read_struct("16xi", stream)[0]
+        stream.seek(16, os.SEEK_CUR)
+        size = read_struct(_INT32, stream)[0]
 
         stream.seek(size - 0x10, os.SEEK_CUR)
-        nof0_size = read_struct("i", stream)[0] + 8
+        nof0_size = read_struct(_INT32, stream)[0] + 8
 
         # Add padding bytes
         nof0_size += 0x10 - (nof0_size % 0x10)

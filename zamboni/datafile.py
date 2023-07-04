@@ -14,7 +14,7 @@ from .util import is_headerless_file, pad_to_multiple, read_struct
 class DataFileHeader:
     """Header for an ICE archive data file"""
 
-    FORMAT: ClassVar[str] = "<4sIIIII40x"
+    FORMAT: ClassVar[struct.Struct] = struct.Struct("<4sIIIII40x")
 
     extension: bytes  # 4 bytes, no period
     file_size: int  # file size including header
@@ -32,7 +32,7 @@ class DataFileHeader:
         start = stream.tell()
         header = DataFileHeader(*read_struct(DataFileHeader.FORMAT, stream))
 
-        header.filename_bytes = read_struct(f"{header.filename_size}s", stream)[0]
+        header.filename_bytes = stream.read(header.filename_size)
 
         stream.seek(start + header.header_size, os.SEEK_SET)
 
@@ -44,7 +44,7 @@ class DataFileHeader:
         extension = Path(filename).suffix.removeprefix(".").encode().ljust(4, b"\0")
         filename_bytes = filename.encode() + b"\0"
 
-        header_size = struct.calcsize(DataFileHeader.FORMAT) + len(filename_bytes)
+        header_size = DataFileHeader.FORMAT.size + len(filename_bytes)
         header_size = pad_to_multiple(header_size, 0x10)
         file_size = pad_to_multiple(size + header_size, 0x10)
 
@@ -64,13 +64,12 @@ class DataFileHeader:
 
     def write(self, stream: BinaryIO):
         """Write the header to a stream"""
-        filename_space = self.header_size - struct.calcsize(DataFileHeader.FORMAT)
+        filename_space = self.header_size - DataFileHeader.FORMAT.size
 
         assert len(self.filename_bytes) <= filename_space
 
         stream.write(
-            struct.pack(
-                DataFileHeader.FORMAT,
+            DataFileHeader.FORMAT.pack(
                 self.extension,
                 self.file_size,
                 self.data_size,

@@ -37,7 +37,7 @@ class IceFileHeader:
     """Header at the start of every ICE file"""
 
     SIGNATURE: ClassVar[bytes] = b"ICE\0"
-    FORMAT: ClassVar[str] = "<4s4xII"
+    FORMAT: ClassVar[struct.Struct] = struct.Struct("<4s4xII")
 
     signature: bytes = SIGNATURE  # 4 bytes
     # 4 byte padding
@@ -57,8 +57,7 @@ class IceFileHeader:
     def write(self, stream: BinaryIO):
         """Write the header to a stream"""
         stream.write(
-            struct.pack(
-                IceFileHeader.FORMAT,
+            IceFileHeader.FORMAT.pack(
                 self.signature,
                 self.version,
                 self.magic_80,
@@ -70,7 +69,7 @@ class IceFileHeader:
 class IceFileMetadata:
     """Metadata about an ICE file"""
 
-    FORMAT: ClassVar[str] = "<IIII"
+    FORMAT: ClassVar[struct.Struct] = struct.Struct("<IIII")
 
     magic_ff: int = 0xFF
     crc32: int = 0
@@ -85,8 +84,7 @@ class IceFileMetadata:
     def write(self, stream: BinaryIO):
         """Write metadata to a stream"""
         stream.write(
-            struct.pack(
-                IceFileMetadata.FORMAT,
+            IceFileMetadata.FORMAT.pack(
                 self.magic_ff,
                 self.crc32,
                 self.flags,
@@ -131,15 +129,28 @@ class IceFile:
             with open(stream, "rb") as file:
                 return IceFile.read(file)
 
-        signature = IceFileHeader.read(stream)
+        header = IceFileHeader.read(stream)
+        file_type = IceFile.get_file_type(header.version)
 
-        match signature.version:
+        return file_type.read_after_header(header, stream)
+
+    @staticmethod
+    def get_file_type(version: int) -> type["IceFile"]:
+        """Get the IceFile type for a given format version"""
+        match version:
             case 3:
-                return IceFileV3.read_after_header(signature, stream)
+                return IceFileV3
             case 4:
-                return IceFileV4.read_after_header(signature, stream)
+                return IceFileV4
+            case _:
+                raise ValueError(f"Unsupported version {version}")
 
-        raise ValueError(f"Invalid version {signature.version}")
+        # Appease pylint https://github.com/pylint-dev/pylint/issues/7412
+        return IceFile
+
+    @classmethod
+    def read_after_header(cls, header: IceFileHeader, stream: BinaryIO):
+        raise NotImplementedError()
 
     def write(
         self,
@@ -172,7 +183,7 @@ class IceFileV3(IceFile):
     class GroupInfo:
         """Header providing extra file group info"""
 
-        FORMAT: ClassVar[str] = "<II4xI"
+        FORMAT: ClassVar[struct.Struct] = struct.Struct("<II4xI")
 
         group1_size: int
         group2_size: int
@@ -183,8 +194,8 @@ class IceFileV3(IceFile):
             """Read info from a stream"""
             return IceFileV3.GroupInfo(*read_struct(IceFileV3.GroupInfo.FORMAT, stream))
 
-    @staticmethod
-    def read_after_header(header: IceFileHeader, stream: BinaryIO) -> "IceFileV3":
+    @classmethod
+    def read_after_header(cls, header: IceFileHeader, stream: BinaryIO) -> "IceFileV3":
         """Read the data following the IceFileHeader"""
         assert header.version == 3
 
@@ -270,8 +281,8 @@ class IceFileV4(IceFile):
         super().__init__(*args, **kwargs)
         self.header.version = 4
 
-    @staticmethod
-    def read_after_header(header: IceFileHeader, stream: BinaryIO) -> "IceFileV4":
+    @classmethod
+    def read_after_header(cls, header: IceFileHeader, stream: BinaryIO) -> "IceFileV4":
         """Read the data following the IceFileHeader"""
         assert header.version == 4
 

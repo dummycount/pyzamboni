@@ -12,7 +12,7 @@ DEFAULT_COMPRESS_LEVEL = 3
 class CompressOptions:
     """Selects the type of compression to use"""
 
-    mode: Literal["none", "kraken", "prs"] = "none"
+    mode: Literal["none", "kraken", "prs"] = "kraken"
     level: int = DEFAULT_COMPRESS_LEVEL
 
     @staticmethod
@@ -23,8 +23,11 @@ class CompressOptions:
             case CompressOptions():
                 return value
 
-            case "no" | "none" | None:
+            case None:
                 return CompressOptions()
+
+            case "no" | "none":
+                return CompressOptions("none")
 
             case "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" | int():
                 return CompressOptions("kraken", int(value))
